@@ -1,0 +1,25 @@
+services:
+  _defaults:
+    public: true
+
+  novanta.automaticrelated.form.admin.configure.cross_sell_configuration_type:
+    class: 'Novanta\AutomaticRelated\Form\Admin\Configure\CrossSellConfigurationType'
+    parent: 'form.type.translatable.aware'
+    public: true
+    arguments:
+      - '@prestashop.adapter.legacy.configuration'
+      - '@prestashop.adapter.form.choice_provider.features_choice_provider'
+    tags:
+      - { name: form.type }
+
+  novanta.automaticrelated.form.admin.configure.up_sell_configuration_type:
+    class: 'Novanta\AutomaticRelated\Form\Admin\Configure\UpSellConfigurationType'
+    parent: 'form.type.translatable.aware'
+    public: true
+    arguments:
+      - '@prestashop.adapter.legacy.configuration'
+      - '@prestashop.adapter.form.choice_provider.features_choice_provider'
+    tags:
+      - { name: form.type }
+
+  

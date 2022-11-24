@@ -1,0 +1,61 @@
+{{ form_start(up_sell_configuration_form) }}
+
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card">
+            <h3 class="card-header">
+                {{ 'Up sell configuration'|trans({}, 'Modules.Automaticrelated.Admin') }}
+            </h3>
+            <div class="card-block row">
+                <div class="card-text">
+                    <div class="form-group row">
+                        <label class="form-control-label">{{ up_sell_configuration_form.up_sell_enabled.vars.label }}</label>
+                        <div class="col-sm">
+                            {{ form_errors(up_sell_configuration_form.up_sell_enabled) }}
+                            {{ form_widget(up_sell_configuration_form.up_sell_enabled) }}
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="form-control-label">{{ up_sell_configuration_form.up_sell_feature.vars.label }}</label>
+                        <div class="col-sm">
+                            {{ form_errors(up_sell_configuration_form.up_sell_feature) }}
+                            {{ form_widget(up_sell_configuration_form.up_sell_feature) }}
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="form-control-label">{{ up_sell_configuration_form.up_sell_category.vars.label }}</label>
+                        <div class="col-sm">
+                            {{ form_errors(up_sell_configuration_form.up_sell_category) }}
+                            {{ form_widget(up_sell_configuration_form.up_sell_category) }}
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="form-control-label">{{ up_sell_configuration_form.up_sell_manufacturer.vars.label }}</label>
+                        <div class="col-sm">
+                            {{ form_errors(up_sell_configuration_form.up_sell_manufacturer) }}
+                            {{ form_widget(up_sell_configuration_form.up_sell_manufacturer) }}
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="form-control-label">{{ up_sell_configuration_form.up_sell_limit.vars.label }}</label>
+                        <div class="col-sm">
+                            {{ form_errors(up_sell_configuration_form.up_sell_limit) }}
+                            {{ form_widget(up_sell_configuration_form.up_sell_limit) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-primary">{{ "Save"|trans({}, 'Admin.Actions')}}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ form_end(up_sell_configuration_form) }}

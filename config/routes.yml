@@ -1,0 +1,4 @@
+admin_automaticrelated_configure_index:
+  path: /automaticrelated/configure
+  methods: [GET, POST]
+  controller: Novanta\AutomaticRelated\Controller\Admin\ConfigureController::indexAction

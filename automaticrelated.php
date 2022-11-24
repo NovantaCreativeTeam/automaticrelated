@@ -24,347 +24,335 @@
 *  International Registered Trademark & Property of PrestaShop SA
 */
 
+use Novanta\AutomaticRelated\Adapter\Install\InstallerFactory;
 use PrestaShop\PrestaShop\Adapter\Image\ImageRetriever;
 use PrestaShop\PrestaShop\Adapter\Product\PriceFormatter;
 use PrestaShop\PrestaShop\Core\Product\ProductListingPresenter;
 use PrestaShop\PrestaShop\Adapter\Product\ProductColorsRetriever;
+use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-class Automaticrelated extends Module
+$autoloadPath = dirname(__FILE__) . '/vendor/autoload.php';
+if (file_exists($autoloadPath)) {
+    require_once $autoloadPath;
+}
+
+class AutomaticRelated extends Module
 {
     protected $config_form = false;
 
     public function __construct()
     {
         $this->name = 'automaticrelated';
-        $this->tab = 'administration';
+        $this->tab = 'front_office_features';
         $this->version = '1.0.0';
         $this->author = 'Novanta';
-
-        /**
-         * Set $this->bootstrap to true if your module is compliant with bootstrap (PrestaShop 1.6)
-         */
         $this->bootstrap = true;
 
         parent::__construct();
 
-        $this->displayName = $this->l('Automatic Related Products');
-        $this->description = $this->l('Display Automatic Related Product based on custom rules');
+        $this->displayName = $this->trans('Automatic Related Products', [], 'Modules.Automaticrelated.Admin');
+        $this->description = $this->trans('Display Automatic Related Product based on custom rules', [], 'Modules.Automaticrelated.Admin');
 
-        $this->confirmUninstall = $this->l('');
-
-        $this->ps_versions_compliancy = array('min' => '1.7', 'max' => _PS_VERSION_);
+        $this->ps_versions_compliancy = array('min' => '1.7.8', 'max' => _PS_VERSION_);
     }
 
-    /**
-     * Don't forget to create update methods if needed:
-     * http://doc.prestashop.com/display/PS16/Enabling+the+Auto-Update
-     */
+    public function isUsingNewTranslationSystem()
+    {
+        return true;
+    }
+
     public function install()
     {
-        Configuration::updateValue('RELATED_CS_ENABLED', false);
-        Configuration::updateValue('RELATED_US_ENABLED', false);
+        $installer = InstallerFactory::create();
 
         return parent::install() &&
-            $this->registerHook('header') &&
-            $this->registerHook('backOfficeHeader') &&
-            $this->registerHook('displayFooterProduct');
+            $installer->install($this);
     }
 
     public function uninstall()
     {
-        Configuration::deleteByName('RELATED_CS_ENABLED');
-        Configuration::deleteByName('RELATED_US_ENABLED');
+        $installer = InstallerFactory::create();
 
-        return parent::uninstall();
+        return parent::uninstall() &&
+            $installer->uninstall();
     }
 
-    /**
-     * Load the configuration form
-     */
     public function getContent()
     {
-        /**
-         * If values have been submitted in the form, process.
-         */
-        if (((bool)Tools::isSubmit('submitAutomaticrelatedModule')) == true) {
-            $this->postProcess();
-        }
-
-        $this->context->smarty->assign('module_dir', $this->_path);
-
-        $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
-
-        return $output.$this->renderForm();
+        Tools::redirectAdmin(SymfonyContainer::getInstance()->get('router')->generate('admin_automaticrelated_configure_index'));
     }
 
-    /**
-     * Create the form that will be displayed in the configuration of your module.
-     */
-    protected function renderForm()
-    {
-        $helper = new HelperForm();
+    #region OLD version TO REMOVE
 
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
+    // /**
+    //  * Load the configuration form
+    //  */
+    // public function getContent()
+    // {
+    //     /**
+    //      * If values have been submitted in the form, process.
+    //      */
+    //     if (((bool)Tools::isSubmit('submitAutomaticrelatedModule')) == true) {
+    //         $this->postProcess();
+    //     }
 
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitAutomaticrelatedModule';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
+    //     $this->context->smarty->assign('module_dir', $this->_path);
 
-        $helper->tpl_vars = array(
-            'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
-            'languages' => $this->context->controller->getLanguages(),
-            'id_language' => $this->context->language->id,
-        );
+    //     $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
 
-        return $helper->generateForm(array($this->getConfigForm()));
-    }
+    //     return $output.$this->renderForm();
+    // }
 
-    /**
-     * Create the structure of your form.
-     */
-    protected function getConfigForm()
-    {
-        return array(
-            'form' => array(
-                'legend' => array(
-                    'title' => $this->l('Settings'),
-                    'icon' => 'icon-cogs',
-                ),
-                'tabs' => array(
-                    'cross_sell' => $this->l('Cross Sell'),
-                    'up_sell' => $this->l('Up Sell')
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Abilita Prodotti Cross Sell'),
-                        'name' => 'RELATED_CS_ENABLED',
-                        'tab'=> 'cross_sell',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'select',                              
-                        'label' => $this->l('Match Attributi Cross Sell'),         
-                        'name' => 'RELATED_CS_FEATURE', 
-                        'tab'=> 'cross_sell',                    
-                        'required' => false,                         
-                        'options' => array(
-                          'query' => Feature::getFeatures($this->context->language->id),                           
-                          'id' => 'id_feature',                           
-                          'name' => 'name',
-                          'default' => array(
-                            'label' => $this->l('Nessun Attributo'),
-                            'value' => 0,
-                           )                             
-                        )
-                      ),
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Match Categoria Cross Sell'),
-                        'name' => 'RELATED_CS_CATEGORY',
-                        'tab'=> 'cross_sell',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Match Brand Cross Sell'),
-                        'name' => 'RELATED_CS_MANUFACTURER',
-                        'tab'=> 'cross_sell',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'text',
-                        'label' => $this->l('Elementi da mostrare Cross Sell'),
-                        'name' => 'RELATED_CS_LIMIT',
-                        'tab'=> 'cross_sell'
-                    ),
+    // /**
+    //  * Create the form that will be displayed in the configuration of your module.
+    //  */
+    // protected function renderForm()
+    // {
+    //     $helper = new HelperForm();
+
+    //     $helper->show_toolbar = false;
+    //     $helper->table = $this->table;
+    //     $helper->module = $this;
+    //     $helper->default_form_language = $this->context->language->id;
+    //     $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
+
+    //     $helper->identifier = $this->identifier;
+    //     $helper->submit_action = 'submitAutomaticrelatedModule';
+    //     $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
+    //         .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+    //     $helper->token = Tools::getAdminTokenLite('AdminModules');
+
+    //     $helper->tpl_vars = array(
+    //         'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
+    //         'languages' => $this->context->controller->getLanguages(),
+    //         'id_language' => $this->context->language->id,
+    //     );
+
+    //     return $helper->generateForm(array($this->getConfigForm()));
+    // }
+
+    // /**
+    //  * Create the structure of your form.
+    //  */
+    // protected function getConfigForm()
+    // {
+    //     return array(
+    //         'form' => array(
+    //             'legend' => array(
+    //                 'title' => $this->l('Settings'),
+    //                 'icon' => 'icon-cogs',
+    //             ),
+    //             'tabs' => array(
+    //                 'cross_sell' => $this->l('Cross Sell'),
+    //                 'up_sell' => $this->l('Up Sell')
+    //             ),
+    //             'input' => array(
+    //                 array(
+    //                     'type' => 'switch',
+    //                     'label' => $this->l('Abilita Prodotti Cross Sell'),
+    //                     'name' => 'RELATED_CS_ENABLED',
+    //                     'tab'=> 'cross_sell',
+    //                     'is_bool' => true,
+    //                     'values' => array(
+    //                         array(
+    //                             'id' => 'active_on',
+    //                             'value' => true,
+    //                             'label' => $this->l('Enabled')
+    //                         ),
+    //                         array(
+    //                             'id' => 'active_off',
+    //                             'value' => false,
+    //                             'label' => $this->l('Disabled')
+    //                         )
+    //                     ),
+    //                 ),
+    //                 array(
+    //                     'type' => 'select',                              
+    //                     'label' => $this->l('Match Attributi Cross Sell'),         
+    //                     'name' => 'RELATED_CS_FEATURE', 
+    //                     'tab'=> 'cross_sell',                    
+    //                     'required' => false,                         
+    //                     'options' => array(
+    //                       'query' => Feature::getFeatures($this->context->language->id),                           
+    //                       'id' => 'id_feature',                           
+    //                       'name' => 'name',
+    //                       'default' => array(
+    //                         'label' => $this->l('Nessun Attributo'),
+    //                         'value' => 0,
+    //                        )                             
+    //                     )
+    //                   ),
+    //                 array(
+    //                     'type' => 'switch',
+    //                     'label' => $this->l('Match Categoria Cross Sell'),
+    //                     'name' => 'RELATED_CS_CATEGORY',
+    //                     'tab'=> 'cross_sell',
+    //                     'is_bool' => true,
+    //                     'values' => array(
+    //                         array(
+    //                             'id' => 'active_on',
+    //                             'value' => true,
+    //                             'label' => $this->l('Enabled')
+    //                         ),
+    //                         array(
+    //                             'id' => 'active_off',
+    //                             'value' => false,
+    //                             'label' => $this->l('Disabled')
+    //                         )
+    //                     ),
+    //                 ),
+    //                 array(
+    //                     'type' => 'switch',
+    //                     'label' => $this->l('Match Brand Cross Sell'),
+    //                     'name' => 'RELATED_CS_MANUFACTURER',
+    //                     'tab'=> 'cross_sell',
+    //                     'is_bool' => true,
+    //                     'values' => array(
+    //                         array(
+    //                             'id' => 'active_on',
+    //                             'value' => true,
+    //                             'label' => $this->l('Enabled')
+    //                         ),
+    //                         array(
+    //                             'id' => 'active_off',
+    //                             'value' => false,
+    //                             'label' => $this->l('Disabled')
+    //                         )
+    //                     ),
+    //                 ),
+    //                 array(
+    //                     'type' => 'text',
+    //                     'label' => $this->l('Elementi da mostrare Cross Sell'),
+    //                     'name' => 'RELATED_CS_LIMIT',
+    //                     'tab'=> 'cross_sell'
+    //                 ),
                     
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Abilita Prodotti Up Sell'),
-                        'name' => 'RELATED_US_ENABLED',
-                        'tab'=> 'up_sell',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'select',                              
-                        'label' => $this->l('Match Attributi Up Sell'),         
-                        'name' => 'RELATED_US_FEATURE', 
-                        'tab'=> 'up_sell',                    
-                        'required' => false,                           
-                        'options' => array(
-                          'query' => Feature::getFeatures($this->context->language->id),                           
-                          'id' => 'id_feature',                           
-                          'name' => 'name',
-                          'default' => array(
-                            'label' => $this->l('Nessun Attributo'),
-                            'value' => 0,
-                           )                         
-                        )
-                      ),
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Match Categoria Up Sell'),
-                        'name' => 'RELATED_US_CATEGORY',
-                        'tab'=> 'up_sell',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Match Brand Up Sell'),
-                        'name' => 'RELATED_US_MANUFACTURER',
-                        'tab'=> 'up_sell',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-                    array(
-                        'type' => 'text',
-                        'label' => $this->l('Elementi da mostrare Up Sell'),
-                        'name' => 'RELATED_US_LIMIT',
-                        'tab'=> 'up_sell'
-                    ),
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-    }
+    //                 array(
+    //                     'type' => 'switch',
+    //                     'label' => $this->l('Abilita Prodotti Up Sell'),
+    //                     'name' => 'RELATED_US_ENABLED',
+    //                     'tab'=> 'up_sell',
+    //                     'is_bool' => true,
+    //                     'values' => array(
+    //                         array(
+    //                             'id' => 'active_on',
+    //                             'value' => true,
+    //                             'label' => $this->l('Enabled')
+    //                         ),
+    //                         array(
+    //                             'id' => 'active_off',
+    //                             'value' => false,
+    //                             'label' => $this->l('Disabled')
+    //                         )
+    //                     ),
+    //                 ),
+    //                 array(
+    //                     'type' => 'select',                              
+    //                     'label' => $this->l('Match Attributi Up Sell'),         
+    //                     'name' => 'RELATED_US_FEATURE', 
+    //                     'tab'=> 'up_sell',                    
+    //                     'required' => false,                           
+    //                     'options' => array(
+    //                       'query' => Feature::getFeatures($this->context->language->id),                           
+    //                       'id' => 'id_feature',                           
+    //                       'name' => 'name',
+    //                       'default' => array(
+    //                         'label' => $this->l('Nessun Attributo'),
+    //                         'value' => 0,
+    //                        )                         
+    //                     )
+    //                   ),
+    //                 array(
+    //                     'type' => 'switch',
+    //                     'label' => $this->l('Match Categoria Up Sell'),
+    //                     'name' => 'RELATED_US_CATEGORY',
+    //                     'tab'=> 'up_sell',
+    //                     'is_bool' => true,
+    //                     'values' => array(
+    //                         array(
+    //                             'id' => 'active_on',
+    //                             'value' => true,
+    //                             'label' => $this->l('Enabled')
+    //                         ),
+    //                         array(
+    //                             'id' => 'active_off',
+    //                             'value' => false,
+    //                             'label' => $this->l('Disabled')
+    //                         )
+    //                     ),
+    //                 ),
+    //                 array(
+    //                     'type' => 'switch',
+    //                     'label' => $this->l('Match Brand Up Sell'),
+    //                     'name' => 'RELATED_US_MANUFACTURER',
+    //                     'tab'=> 'up_sell',
+    //                     'is_bool' => true,
+    //                     'values' => array(
+    //                         array(
+    //                             'id' => 'active_on',
+    //                             'value' => true,
+    //                             'label' => $this->l('Enabled')
+    //                         ),
+    //                         array(
+    //                             'id' => 'active_off',
+    //                             'value' => false,
+    //                             'label' => $this->l('Disabled')
+    //                         )
+    //                     ),
+    //                 ),
+    //                 array(
+    //                     'type' => 'text',
+    //                     'label' => $this->l('Elementi da mostrare Up Sell'),
+    //                     'name' => 'RELATED_US_LIMIT',
+    //                     'tab'=> 'up_sell'
+    //                 ),
+    //             ),
+    //             'submit' => array(
+    //                 'title' => $this->l('Save'),
+    //             ),
+    //         ),
+    //     );
+    // }
 
-    /**
-     * Set values for the inputs.
-     */
-    protected function getConfigFormValues()
-    {
-        return array(
-            'RELATED_CS_ENABLED' => Configuration::get('RELATED_CS_ENABLED', true),
-            'RELATED_CS_FEATURE' => Configuration::get('RELATED_CS_FEATURE', null),
-            'RELATED_CS_CATEGORY' => Configuration::get('RELATED_CS_CATEGORY', true),
-            'RELATED_CS_MANUFACTURER' => Configuration::get('RELATED_CS_MANUFACTURER', null),
-            'RELATED_CS_LIMIT' => Configuration::get('RELATED_CS_LIMIT', 10),
-            // RELATED_CS_ORDER
+    // /**
+    //  * Set values for the inputs.
+    //  */
+    // protected function getConfigFormValues()
+    // {
+    //     return array(
+    //         'RELATED_CS_ENABLED' => Configuration::get('RELATED_CS_ENABLED', true),
+    //         'RELATED_CS_FEATURE' => Configuration::get('RELATED_CS_FEATURE', null),
+    //         'RELATED_CS_CATEGORY' => Configuration::get('RELATED_CS_CATEGORY', true),
+    //         'RELATED_CS_MANUFACTURER' => Configuration::get('RELATED_CS_MANUFACTURER', null),
+    //         'RELATED_CS_LIMIT' => Configuration::get('RELATED_CS_LIMIT', 10),
+    //         // RELATED_CS_ORDER
             
-            'RELATED_US_ENABLED' => Configuration::get('RELATED_US_ENABLED', true), 
-            'RELATED_US_FEATURE' => Configuration::get('RELATED_US_FEATURE', null),
-            'RELATED_US_CATEGORY' => Configuration::get('RELATED_US_CATEGORY', true),
-            'RELATED_US_MANUFACTURER' => Configuration::get('RELATED_US_MANUFACTURER', null),
-            'RELATED_US_LIMIT' => Configuration::get('RELATED_US_LIMIT', 10),
-            // RELATED_US_ORDER
-        );
-    }
+    //         'RELATED_US_ENABLED' => Configuration::get('RELATED_US_ENABLED', true), 
+    //         'RELATED_US_FEATURE' => Configuration::get('RELATED_US_FEATURE', null),
+    //         'RELATED_US_CATEGORY' => Configuration::get('RELATED_US_CATEGORY', true),
+    //         'RELATED_US_MANUFACTURER' => Configuration::get('RELATED_US_MANUFACTURER', null),
+    //         'RELATED_US_LIMIT' => Configuration::get('RELATED_US_LIMIT', 10),
+    //         // RELATED_US_ORDER
+    //     );
+    // }
 
-    /**
-     * Save form data.
-     */
-    protected function postProcess()
-    {
-        $form_values = $this->getConfigFormValues();
+    // /**
+    //  * Save form data.
+    //  */
+    // protected function postProcess()
+    // {
+    //     $form_values = $this->getConfigFormValues();
 
-        foreach (array_keys($form_values) as $key) {
-            Configuration::updateValue($key, Tools::getValue($key));
-        }
-    }
+    //     foreach (array_keys($form_values) as $key) {
+    //         Configuration::updateValue($key, Tools::getValue($key));
+    //     }
+    // }
 
-    /**
-    * Add the CSS & JavaScript files you want to be loaded in the BO.
-    */
-    public function hookBackOfficeHeader()
-    {
-        if (Tools::getValue('module_name') == $this->name) {
-            $this->context->controller->addJS($this->_path.'views/js/back.js');
-            $this->context->controller->addCSS($this->_path.'views/css/back.css');
-        }
-    }
-
-    /**
-     * Add the CSS & JavaScript files you want to be added on the FO.
-     */
-    public function hookHeader()
-    {
-        $this->context->controller->addJS($this->_path.'/views/js/front.js');
-        $this->context->controller->addCSS($this->_path.'/views/css/front.css');
-    }
+    #endregion
 
     public function hookDisplayFooterProduct($params)
     {
@@ -372,20 +360,20 @@ class Automaticrelated extends Module
         $up_sell = null;
 
         // 1. Verifico se il CrossSell è abilitato
-        if(Configuration::get('RELATED_CS_ENABLED', false)) {
+        if(Configuration::get('AUTOMATICRELATED_CS_ENABLED', false)) {
             // 1.1 Recupero i prodotti CrossSell
             $cross_sell = $this->getCrossSellProducts($params['product']);
-            $cross_feature_info = $this->getFeatureInfo($params['product']['id_product'], Configuration::get('RELATED_CS_FEATURE'));
-            $cross_category = Configuration::get('RELATED_CS_CATEGORY') ? $params['category']->name : null;
+            $cross_feature_info = $this->getFeatureInfo($params['product']['id_product'], Configuration::get('AUTOMATICRELATED_CS_FEATURE'));
+            $cross_category = Configuration::get('AUTOMATICRELATED_CS_CATEGORY') ? $params['category']->name : null;
         }
         
 
         // 2. Verifico se l'UpSell è abilitato
-        if(Configuration::get('RELATED_US_ENABLED', false)) {
+        if(Configuration::get('AUTOMATICRELATED_US_ENABLED', false)) {
             // 2.1 Recupero i prodotti UpSell
             $up_sell = $this->getUpSellProducts($params['product']);
-            $up_feature_info = $this->getFeatureInfo($params['product']['id_product'], Configuration::get('RELATED_US_FEATURE'));
-            $up_category = Configuration::get('RELATED_US_CATEGORY') ? $params['category']->name : null;
+            $up_feature_info = $this->getFeatureInfo($params['product']['id_product'], Configuration::get('AUTOMATICRELATED_US_FEATURE'));
+            $up_category = Configuration::get('AUTOMATICRELATED_US_CATEGORY') ? $params['category']->name : null;
         }
 
         $this->context->controller->registerJavascript('remote-mymodule-js', 'modules/' . $this->name . '/views/js/front.js', ['position' => 'bottom', 'priority' => 150]);
@@ -406,10 +394,10 @@ class Automaticrelated extends Module
 
     private function getCrossSellProducts($product) {
         $cross_sell = null;
-        $cross_feature = Configuration::get('RELATED_CS_FEATURE');
-        $cross_category = Configuration::get('RELATED_CS_CATEGORY', false);
-        $cross_manufacturer = Configuration::get('RELATED_CS_MANUFACTURER', false);
-        $cross_limit = Configuration::get('RELATED_CS_LIMIT', 10);
+        $cross_feature = Configuration::get('AUTOMATICRELATED_CS_FEATURE');
+        $cross_category = Configuration::get('AUTOMATICRELATED_CS_CATEGORY', false);
+        $cross_manufacturer = Configuration::get('AUTOMATICRELATED_CS_MANUFACTURER', false);
+        $cross_limit = Configuration::get('AUTOMATICRELATED_CS_LIMIT', 10);
 
         // 1. Verifico che sia stato passato il product
         if($product == null) {
@@ -465,10 +453,10 @@ class Automaticrelated extends Module
 
     private function getUpSellProducts($product) {
         $up_sell = null;
-        $up_feature = Configuration::get('RELATED_US_FEATURE');
-        $up_category = Configuration::get('RELATED_US_CATEGORY', false);
-        $up_manufacturer = Configuration::get('RELATED_US_MANUFACTURER', false);
-        $up_limit = Configuration::get('RELATED_US_LIMIT', 10);
+        $up_feature = Configuration::get('AUTOMATICRELATED_US_FEATURE');
+        $up_category = Configuration::get('AUTOMATICRELATED_US_CATEGORY', false);
+        $up_manufacturer = Configuration::get('AUTOMATICRELATED_US_MANUFACTURER', false);
+        $up_limit = Configuration::get('AUTOMATICRELATED_US_LIMIT', 10);
 
         // 1. Verifico che sia stato passato il product
         if($product == null) {
