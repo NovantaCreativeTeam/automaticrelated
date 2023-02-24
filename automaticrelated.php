@@ -365,7 +365,6 @@ class AutomaticRelated extends Module
             $cross_category = Configuration::get('AUTOMATICRELATED_CS_CATEGORY') ? $params['category']->name : null;
         }
         
-
         // 2. Verifico se l'UpSell è abilitato
         if(Configuration::get('AUTOMATICRELATED_US_ENABLED', false)) {
             // 2.1 Recupero i prodotti UpSell
@@ -374,7 +373,7 @@ class AutomaticRelated extends Module
             $up_category = Configuration::get('AUTOMATICRELATED_US_CATEGORY') ? $params['category']->name : null;
         }
 
-        $this->context->controller->registerJavascript('remote-mymodule-js', 'modules/' . $this->name . '/views/js/front.js', ['position' => 'bottom', 'priority' => 150]);
+        // $this->context->controller->registerJavascript('remote-mymodule-js', 'modules/' . $this->name . '/views/js/front.js', ['position' => 'bottom', 'priority' => 150]);
         $this->context->smarty->assign(array(
             'cross_sell' => isset($cross_sell) ? $cross_sell : null,
             'cross_feature_name' => isset($cross_feature_info) ? $cross_feature_info['name'] : null,

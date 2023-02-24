@@ -24,6 +24,7 @@
 */
 namespace Novanta\AutomaticRelated\Form\Admin\Configure;
 
+use PrestaShop\PrestaShop\Adapter\Configuration;
 use PrestaShop\PrestaShop\Adapter\Form\ChoiceProvider\FeaturesChoiceProvider;
 use PrestaShop\PrestaShop\Core\ConfigurationInterface;
 use PrestaShopBundle\Form\Admin\Type\SwitchType;
@@ -41,7 +42,7 @@ class CrossSellConfigurationType extends TranslatorAwareType
     public function __construct(
         TranslatorInterface $translator,
         array $locales,
-        ConfigurationInterface $configuration,
+        Configuration $configuration,
         FeaturesChoiceProvider $featuresChoiceProvider
     ) {
         parent::__construct($translator, $locales);

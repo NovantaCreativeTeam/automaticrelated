@@ -30,3 +30,6 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+
+config.xml
+config_*.xml
